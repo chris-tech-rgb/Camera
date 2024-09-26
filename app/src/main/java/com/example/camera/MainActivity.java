@@ -157,37 +157,37 @@ public class MainActivity extends AppCompatActivity {
     private void analyzingPicture() {
         result.setVisibility(View.VISIBLE);
         int[] rgb = getAverageRGB(scaledBitmap);
-        double[] coe = new double[6];
+        double[] coef = new double[6];
         switch (selectedItem) {
             case "pH":
-                coe[0] = -15.718605037575877;
-                coe[1] = -0.03080303103844433;
-                coe[2] = 45.64599555321209;
-                coe[3] = -0.2009124581020623;
-                coe[4] = 0.33180976001457324;
-                coe[5] = 0.18380161142124604;
+                coef[0] = -15.718605037575877;
+                coef[1] = -0.03080303103844433;
+                coef[2] = 45.64599555321209;
+                coef[3] = -0.2009124581020623;
+                coef[4] = 0.33180976001457324;
+                coef[5] = 0.18380161142124604;
                 break;
             case "Glucose":
-                coe[0] = 0.9359533720850897;
-                coe[1] = 0.1262190476083578;
-                coe[2] = -0.014892333900063486;
-                coe[3] = 1.210664316525882;
-                coe[4] = 0.025640415192638964;
-                coe[5] = 1.0536548024608872;
+                coef[0] = 0.9359533720850897;
+                coef[1] = 0.1262190476083578;
+                coef[2] = -0.014892333900063486;
+                coef[3] = 1.210664316525882;
+                coef[4] = 0.025640415192638964;
+                coef[5] = 1.0536548024608872;
                 break;
             case "Lactate":
-                coe[0] = 2.2315746305948734;
-                coe[1] = 0.8593691098429146;
-                coe[2] = -6.597149856350124;
-                coe[3] = 0.6850134245147629;
-                coe[4] = 48.19166719957681;
-                coe[5] = -0.035251607735916055;
+                coef[0] = 2.2315746305948734;
+                coef[1] = 0.8593691098429146;
+                coef[2] = -6.597149856350124;
+                coef[3] = 0.6850134245147629;
+                coef[4] = 48.19166719957681;
+                coef[5] = -0.035251607735916055;
                 break;
         }
-        double r1 = Math.pow(rgb[0], coe[1]);
-        double r2 = Math.pow(rgb[1], coe[3]);
-        double r3 = Math.pow(rgb[2], coe[5]);
-        double res = coe[0] * r1 + coe[2] * r2 + coe[4] * r3;
+        double r1 = Math.pow(rgb[0], coef[1]);
+        double r2 = Math.pow(rgb[1], coef[3]);
+        double r3 = Math.pow(rgb[2], coef[5]);
+        double res = coef[0] * r1 + coef[2] * r2 + coef[4] * r3;
         String resultText = "R: "+ rgb[0] + "\nG: "+ rgb[1] + "\nB: "+ rgb[2] + "\nResult: " + String.format(Locale.US, "%.2f", res);
         if (!selectedItem.equals("pH") && !String.format(Locale.US, "%.2f", res).equals("NaN")) {
             resultText += " mM";
