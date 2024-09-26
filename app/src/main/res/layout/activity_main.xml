@@ -43,7 +43,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:visibility="gone" />
+            android:visibility="gone"/>
     </LinearLayout>
 
     <Button
@@ -61,7 +61,7 @@
         android:text="@string/extract"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        tools:ignore="RelativeOverlap" />
+        tools:ignore="RelativeOverlap"/>
 
     <Button
         android:id="@+id/analyze_button"
