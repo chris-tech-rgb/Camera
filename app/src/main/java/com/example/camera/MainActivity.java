@@ -157,37 +157,22 @@ public class MainActivity extends AppCompatActivity {
     private void analyzingPicture() {
         result.setVisibility(View.VISIBLE);
         int[] rgb = getAverageRGB(scaledBitmap);
-        double[] coef = new double[6];
+        double luminance = getLuminance(rgb);
+        double[] coef = new double[2];
         switch (selectedItem) {
             case "pH":
-                coef[0] = -15.718605037575877;
-                coef[1] = -0.03080303103844433;
-                coef[2] = 45.64599555321209;
-                coef[3] = -0.2009124581020623;
-                coef[4] = 0.33180976001457324;
-                coef[5] = 0.18380161142124604;
+                coef[0] = -0.33567;
+                coef[1] = 6.25133;
                 break;
             case "Glucose":
-                coef[0] = 0.9359533720850897;
-                coef[1] = 0.1262190476083578;
-                coef[2] = -0.014892333900063486;
-                coef[3] = 1.210664316525882;
-                coef[4] = 0.025640415192638964;
-                coef[5] = 1.0536548024608872;
+                coef[0] = -0.46851;
+                coef[1] = 5.02739;
                 break;
             case "Lactate":
-                coef[0] = 2.2315746305948734;
-                coef[1] = 0.8593691098429146;
-                coef[2] = -6.597149856350124;
-                coef[3] = 0.6850134245147629;
-                coef[4] = 48.19166719957681;
-                coef[5] = -0.035251607735916055;
-                break;
+                coef[0] = -0.06374;
+                coef[1] = 5.06541;
         }
-        double r1 = Math.pow(rgb[0], coef[1]);
-        double r2 = Math.pow(rgb[1], coef[3]);
-        double r3 = Math.pow(rgb[2], coef[5]);
-        double res = coef[0] * r1 + coef[2] * r2 + coef[4] * r3;
+        double res = (luminance - coef[1]) / coef[0];
         String resultText = "R: "+ rgb[0] + "\nG: "+ rgb[1] + "\nB: "+ rgb[2] + "\nResult: " + String.format(Locale.US, "%.2f", res);
         if (!selectedItem.equals("pH") && !String.format(Locale.US, "%.2f", res).equals("NaN")) {
             resultText += " mM";
@@ -218,5 +203,9 @@ public class MainActivity extends AppCompatActivity {
         int blueAverage = (int) (blueSum / size);
 
         return new int[]{redAverage, greenAverage, blueAverage};
+    }
+
+    private double getLuminance(int[] rgb) {
+        return Math.log1p(0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2]);
     }
 }
