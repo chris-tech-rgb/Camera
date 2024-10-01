@@ -18,11 +18,17 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE = 22;
+    private static final int BITMAP_WIDTH = 720;
+    private static final int BITMAP_HEIGHT = 970;
+    private static final int MARGIN_HEIGHT = 256;
+    private static final Map<String, double[]> COEFFICIENTS_MAP = new HashMap<>();
     private Button extractButton, analyzeButton;
     private ImageView imageView;
     private CropImageView cropImageView;
@@ -30,6 +36,12 @@ public class MainActivity extends AppCompatActivity {
     private Spinner spinnerOptions;
     private String selectedItem;
     private TextView result;
+
+    static {
+        COEFFICIENTS_MAP.put("pH", new double[]{-0.33567, 6.25133});
+        COEFFICIENTS_MAP.put("Glucose", new double[]{-0.46851, 5.02739});
+        COEFFICIENTS_MAP.put("Lactate", new double[]{-0.06374, 5.06541});
+    }
 
     @SuppressLint("QueryPermissionsNeeded")
     @Override
@@ -54,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
             if (cameraIntent.resolveActivity(getPackageManager()) != null) {
                 startActivityForResult(cameraIntent, REQUEST_CODE);
             } else {
-                Toast.makeText(MainActivity.this, "No camera app found", Toast.LENGTH_SHORT).show();
+                showToast("No camera app found");
             }
         });
 
@@ -63,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                 extractBitmapPart();
                 cropImageView.clearSelection(); // Clear selection in CropImageView
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "Error analyzing picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                showToast("Error analyzing picture: " + e.getMessage());
             }
         });
 
@@ -71,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 analyzingPicture();
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "Error extracting bitmap part: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                showToast("Error extracting bitmap part: " + e.getMessage());
             }
         });
 
@@ -101,24 +113,24 @@ public class MainActivity extends AppCompatActivity {
                 Bitmap photoBitmap = (Bitmap) extras.get("data");
                 if (photoBitmap != null) {
                     // Scale and set bitmap
-                    scaledBitmap = Bitmap.createScaledBitmap(photoBitmap, 720, 970, false);
+                    scaledBitmap = Bitmap.createScaledBitmap(photoBitmap, BITMAP_WIDTH, BITMAP_HEIGHT, false);
                     imageView.setImageBitmap(scaledBitmap);
                     imageView.setVisibility(View.VISIBLE); // Show the ImageView with captured image
                     cropImageView.setVisibility(View.VISIBLE); // Show the CropImageView for selection
                 } else {
-                    Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+                    showToast("Failed to capture image");
                 }
             } else {
-                Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+                showToast("Failed to capture image");
             }
         } else {
-            Toast.makeText(this, "Cancelled", Toast.LENGTH_SHORT).show();
+            showToast("Cancelled");
         }
     }
 
     private void extractBitmapPart() {
         if (scaledBitmap == null) {
-            Toast.makeText(this, "No photo to crop", Toast.LENGTH_SHORT).show();
+            showToast("No photo to crop");
             return;
         }
 
@@ -126,31 +138,32 @@ public class MainActivity extends AppCompatActivity {
 
         // Validate and adjust the rectangle to ensure it's within bounds
         int left = selectedRect.left;
-        int top = selectedRect.top - 256;
+        int top = selectedRect.top - MARGIN_HEIGHT;
         int right = selectedRect.right;
-        int bottom = selectedRect.bottom  - 256;
+        int bottom = selectedRect.bottom  - MARGIN_HEIGHT;
 
         // Calculate width and height
         int width = right - left;
         int height = bottom - top;
 
+        // Check if selected area is valid
+        if (width <= 0 || height <= 0) {
+            showToast("Please select a valid area");
+            return;
+        }
+
         try {
-            // Check if selected area is valid
-            if (width > 0 && height > 0) {
-                Bitmap croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height);
-                // Display the cropped bitmap in imageView
-                imageView.setImageBitmap(croppedBitmap);
-                imageView.setVisibility(View.VISIBLE);
-                cropImageView.clearSelection(); // Clear selection in CropImageView
-                cropImageView.setVisibility(View.GONE); // Hide CropImageView after extraction
-                spinnerOptions.setVisibility(View.VISIBLE);
-                extractButton.setVisibility(View.GONE);
-                analyzeButton.setVisibility(View.VISIBLE);
-            } else {
-                Toast.makeText(this, "Please select a valid area", Toast.LENGTH_SHORT).show();
-            }
+            Bitmap croppedBitmap = Bitmap.createBitmap(scaledBitmap, left, top, width, height);
+            // Display the cropped bitmap in imageView
+            imageView.setImageBitmap(croppedBitmap);
+            imageView.setVisibility(View.VISIBLE);
+            cropImageView.clearSelection(); // Clear selection in CropImageView
+            cropImageView.setVisibility(View.GONE); // Hide CropImageView after extraction
+            spinnerOptions.setVisibility(View.VISIBLE);
+            extractButton.setVisibility(View.GONE);
+            analyzeButton.setVisibility(View.VISIBLE);
         } catch (IllegalArgumentException e) {
-            Toast.makeText(this, "Error creating cropped bitmap: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            showToast("Error creating cropped bitmap: " + e.getMessage());
         }
     }
 
@@ -158,26 +171,18 @@ public class MainActivity extends AppCompatActivity {
         result.setVisibility(View.VISIBLE);
         int[] rgb = getAverageRGB(scaledBitmap);
         double luminance = getLuminance(rgb);
-        double[] coef = new double[2];
-        switch (selectedItem) {
-            case "pH":
-                coef[0] = -0.33567;
-                coef[1] = 6.25133;
-                break;
-            case "Glucose":
-                coef[0] = -0.46851;
-                coef[1] = 5.02739;
-                break;
-            case "Lactate":
-                coef[0] = -0.06374;
-                coef[1] = 5.06541;
+        double[] coef = COEFFICIENTS_MAP.get(selectedItem);
+
+        if (coef != null) {
+            double res = (luminance - coef[1]) / coef[0];
+            String resultText = String.format(Locale.US, "R: %d\nG: %d\nB: %d\nResult: %.2f", rgb[0], rgb[1], rgb[2], res);
+            if (!selectedItem.equals("pH") && !String.format(Locale.US, "%.2f", res).equals("NaN")) {
+                resultText += " mM";
+            }
+            result.setText(resultText);
+        } else {
+            showToast("Invalid option selected");
         }
-        double res = (luminance - coef[1]) / coef[0];
-        String resultText = "R: "+ rgb[0] + "\nG: "+ rgb[1] + "\nB: "+ rgb[2] + "\nResult: " + String.format(Locale.US, "%.2f", res);
-        if (!selectedItem.equals("pH") && !String.format(Locale.US, "%.2f", res).equals("NaN")) {
-            resultText += " mM";
-        }
-        result.setText(resultText);
     }
 
     /** @noinspection ReassignedVariable*/
@@ -198,14 +203,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        int redAverage = (int) (redSum / size);
-        int greenAverage = (int) (greenSum / size);
-        int blueAverage = (int) (blueSum / size);
+        int redAverage = Math.round((float) redSum / size);
+        int greenAverage = Math.round((float) greenSum / size);
+        int blueAverage = Math.round((float) blueSum / size);
 
         return new int[]{redAverage, greenAverage, blueAverage};
     }
 
     private double getLuminance(int[] rgb) {
         return Math.log1p(0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2]);
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
     }
 }
